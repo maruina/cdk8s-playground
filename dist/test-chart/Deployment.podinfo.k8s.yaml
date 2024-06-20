@@ -8,7 +8,7 @@ metadata:
     helm.sh/chart: podinfo-6.6.2
   name: podinfo
   annotations:
-    sidecar.istio.io/inject: "true"
+    sidecar.istio.io/inject: unstructured
 spec:
   replicas: 1
   selector:
