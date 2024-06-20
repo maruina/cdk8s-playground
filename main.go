@@ -2,12 +2,43 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
+
+func getContainers(u *unstructured.Unstructured) []interface{} {
+	containers, found, err := unstructured.NestedSlice(u.Object, "spec", "template", "spec", "containers")
+	if !found || err != nil {
+		return nil
+	}
+	return containers
+}
+
+func mutateContainersEnv(object cdk8s.ApiObject, u *unstructured.Unstructured) {
+	containers := getContainers(u)
+	if containers == nil {
+		return
+	}
+
+	for i, container := range containers {
+		c := container.(map[string]interface{})
+		env, found, err := unstructured.NestedSlice(c, "env")
+		if !found || err != nil {
+			continue
+		}
+
+		env = append(env, map[string]interface{}{
+			"name":  "NEW_ENV",
+			"value": "new-value",
+		})
+
+		object.AddJsonPatch(cdk8s.JsonPatch_Replace(jsii.String(fmt.Sprintf("/spec/template/spec/containers/%d/env", i)), env))
+	}
+}
 
 func mutateAnnotations(objCdk8s cdk8s.ApiObject, u *unstructured.Unstructured) {
 	defaultAnnotation := map[string]string{
@@ -45,6 +76,7 @@ func mutate(chart cdk8s.Helm) error {
 		switch kind {
 		case "Deployment":
 			mutateAnnotations(obj, &u)
+			mutateContainersEnv(obj, &u)
 		default:
 			// Do nothing
 			slog.Info("Skipping object", "kind", kind)

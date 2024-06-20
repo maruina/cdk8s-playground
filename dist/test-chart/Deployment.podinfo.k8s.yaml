@@ -40,6 +40,8 @@ spec:
           env:
             - name: PODINFO_UI_COLOR
               value: "#34577c"
+            - name: NEW_ENV
+              value: new-value
           image: ghcr.io/stefanprodan/podinfo:6.6.2
           imagePullPolicy: IfNotPresent
           livenessProbe:
