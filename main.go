@@ -6,61 +6,45 @@ import (
 
 	"github.com/aws/jsii-runtime-go"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	jsonserializer "k8s.io/apimachinery/pkg/runtime/serializer/json"
-	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-func mutateAnnotations(objCdk8s cdk8s.ApiObject, objMeta *metav1.ObjectMeta) {
-	defaultAnnotations := map[string]string{
-		"sidecar.istio.io/inject": "true",
+func mutateAnnotations(objCdk8s cdk8s.ApiObject, u *unstructured.Unstructured) {
+	defaultAnnotation := map[string]string{
+		"sidecar.istio.io/inject": "unstructured",
 	}
 
-	if objMeta.Annotations == nil {
-		objMeta.Annotations = make(map[string]string)
+	existing := u.GetAnnotations()
+	if existing == nil {
+		existing = make(map[string]string)
+	}
+	for k, v := range defaultAnnotation {
+		existing[k] = v
 	}
 
-	for key, value := range defaultAnnotations {
-		objMeta.Annotations[key] = value
-	}
-
-	objCdk8s.AddJsonPatch(cdk8s.JsonPatch_Replace(jsii.String("/metadata/annotations"), objMeta.Annotations))
+	objCdk8s.AddJsonPatch(cdk8s.JsonPatch_Replace(jsii.String("/metadata/annotations"), existing))
 }
 
 func mutate(chart cdk8s.Helm) error {
-	decoder := jsonserializer.NewSerializerWithOptions(
-		jsonserializer.DefaultMetaFactory, // jsonserializer.MetaFactory
-		scheme.Scheme,                     // runtime.Scheme implements runtime.ObjectCreater
-		scheme.Scheme,                     // runtime.Scheme implements runtime.ObjectTyper
-		jsonserializer.SerializerOptions{
-			Yaml:   false,
-			Pretty: false,
-			Strict: false,
-		},
-	)
-
 	for _, obj := range *chart.ApiObjects() {
+		u := unstructured.Unstructured{}
 		// Convert cdk8s object to bytes
 		bytes, err := json.Marshal(obj.ToJson())
 		if err != nil {
 			return err
 		}
 
-		// Decode JSON to runtime object
-		decoded, err := runtime.Decode(decoder, bytes)
+		// Unmarshal bytes to unstructured object
+		err = u.UnmarshalJSON(bytes)
 		if err != nil {
 			return err
 		}
-		kind := decoded.GetObjectKind().GroupVersionKind().Kind
+		kind := u.GroupVersionKind().Kind
 
-		// Convert generic runtime object to specific typed object
 		// This is the entrypoint for all the mutations
 		switch kind {
 		case "Deployment":
-			deployment := decoded.(*appsv1.Deployment)
-			mutateAnnotations(obj, &deployment.ObjectMeta)
+			mutateAnnotations(obj, &u)
 		default:
 			// Do nothing
 			slog.Info("Skipping object", "kind", kind)
