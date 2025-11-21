@@ -1,0 +1,61 @@
+name: cdk8s
+
+on:
+  pull_request:
+
+env:
+  # renovate: datasource=github-releases depName=FairwindsOps/pluto
+  PLUTO_VERSION: v5.22.6
+  # renovate: datasource=github-releases depName=yannh/kubeconform
+  KUBE_CONFORM_VERSION: v0.7.0
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Setup node
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6
+        with:
+          node-version: '24'
+
+      - name: Setup go
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6
+        with:
+          go-version: '1.25'
+
+      - name: Setup helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+
+      - name: Install cdk8s
+        run: npm install -g cdk8s-cli
+
+      - name: Remove current manifests
+        run: rm -rf ./dist
+
+      - name: Render
+        run: go run main.go
+
+      - name: Create extra bin directory
+        run: |
+          mkdir -p ${{ github.workspace }}/bin
+          echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
+
+      - name: Install pluto
+        if: steps.binary-cache-restore.outputs.cache-hit != 'true'
+        run: |
+          cd $(mktemp -d)
+          ARCH=$(uname -m | sed s/x86_64/amd64/)
+          FILENAME_VERSION=${PLUTO_VERSION#v}
+          wget https://github.com/FairwindsOps/pluto/releases/download/${PLUTO_VERSION}/pluto_${FILENAME_VERSION}_linux_${ARCH}.tar.gz
+          wget https://github.com/FairwindsOps/pluto/releases/download/${PLUTO_VERSION}/checksums.txt
+          wget https://github.com/FairwindsOps/pluto/releases/download/${PLUTO_VERSION}/checksums.txt.sig
+          grep linux_${ARCH} checksums.txt | sha256sum --check -
+          tar -xvzf pluto_${FILENAME_VERSION}_linux_${ARCH}.tar.gz pluto
+          mv ./pluto ${{ github.workspace }}/bin/pluto
+
+      - name: Check for deprecated APIs
+        run: pluto detect-files -d dist
