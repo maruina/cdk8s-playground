@@ -95,7 +95,7 @@ func main() {
 
 	values := map[string]interface{}{
 		"ui": map[string]string{
-			"message": "foo",
+			"message": "baz",
 		},
 	}
 
