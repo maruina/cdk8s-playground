@@ -51,7 +51,7 @@ jobs:
           fi
 
           git add .
-          git commit --message "apply automatic changes"
+          git commit --message "[skip ci] apply automatic changes"
           echo "commit=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
           echo "branch=$(git branch --show-current)" >> $GITHUB_OUTPUT
 
