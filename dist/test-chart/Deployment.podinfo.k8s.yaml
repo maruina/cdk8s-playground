@@ -39,7 +39,7 @@ spec:
             - --random-error=false
           env:
             - name: PODINFO_UI_MESSAGE
-              value: foo
+              value: bar
             - name: PODINFO_UI_COLOR
               value: "#34577c"
             - name: NEW_ENV
