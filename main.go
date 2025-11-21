@@ -93,12 +93,19 @@ func main() {
 		YamlOutputType: cdk8s.YamlOutputType_FOLDER_PER_CHART_FILE_PER_RESOURCE,
 	})
 
+	values := map[string]interface{}{
+		"ui": map[string]string{
+			"message": "hello",
+		},
+	}
+
 	c := cdk8s.NewChart(app, jsii.String("test-chart"), &cdk8s.ChartProps{})
 	h := cdk8s.NewHelm(c, jsii.String(hid), &cdk8s.HelmProps{
 		Chart:       jsii.String("oci://ghcr.io/stefanprodan/charts/podinfo"),
 		Version:     jsii.String("6.6.2"),
 		ReleaseName: jsii.String(hid),
 		HelmFlags:   jsii.Strings("--no-hooks", "--namespace", hid),
+		Values:      &values,
 	})
 
 	if err := mutate(h); err != nil {
