@@ -7,7 +7,7 @@ permissions:
 
 on:
   workflow_run:
-    workflows: ["render"]
+    workflows: ["cdk8s"]
     types:
       - completed
 
