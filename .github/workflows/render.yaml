@@ -32,9 +32,6 @@ jobs:
       - name: Install cdk8s
         run: npm install -g cdk8s-cli
 
-      - name: Add Helm repositories
-        run: helm repo add https://stakater.github.io/stakater-charts
-
       - name: Remove current manifests
         run: rm -rf ./dist
 
